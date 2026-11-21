@@ -12,10 +12,12 @@ import 'controllers/home_controller.dart';
 import 'widgets/service_card.dart';
 import 'widgets/service_details_dialog.dart';
 import 'views/our_services_view.dart';
+import 'views/report_view.dart';
 
 enum LandingPageTab {
   home,
   services,
+  reports,
 }
 
 class LandingScreen extends StatefulWidget {
@@ -291,7 +293,8 @@ class _LandingScreenState extends State<LandingScreen> {
                               ],
                             ),
                           )
-                        : SingleChildScrollView(
+                        : _currentTab == LandingPageTab.services
+                        ? SingleChildScrollView(
                             controller: _scrollController,
                             child: Column(
                               children: [
@@ -307,6 +310,15 @@ class _LandingScreenState extends State<LandingScreen> {
                                 ),
 
                                 // Executive Multi-Column Footer
+                                _buildFooterSection(context, isMobile, isTablet, details),
+                              ],
+                            ),
+                          )
+                        : SingleChildScrollView(
+                            controller: _scrollController,
+                            child: Column(
+                              children: [
+                                ReportView(isMobile: isMobile),
                                 _buildFooterSection(context, isMobile, isTablet, details),
                               ],
                             ),
@@ -507,6 +519,8 @@ class _LandingScreenState extends State<LandingScreen> {
                 _buildNavTabItem('Home', LandingPageTab.home, Icons.home_rounded),
                 const SizedBox(width: 8),
                 _buildNavTabItem('Services', LandingPageTab.services, Icons.science_rounded),
+                const SizedBox(width: 8),
+                _buildNavTabItem('Reports', LandingPageTab.reports, Icons.description_outlined),
               ],
             ),
             const Spacer(),
@@ -665,6 +679,10 @@ class _LandingScreenState extends State<LandingScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: _buildMobileTabButton('Services', Icons.science_rounded, LandingPageTab.services),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildMobileTabButton('Reports', Icons.description_outlined, LandingPageTab.reports),
           ),
         ],
       ),

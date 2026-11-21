@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:revol_portal/features/samples/data/models/coa_report_model.dart';
 import 'package:revol_portal/features/samples/presentation/controllers/sample_controller.dart';
+import 'package:revol_portal/features/samples/data/sample_repository.dart';
 
 void main() {
   group('CoaReportModel & Tree View Tests', () {
