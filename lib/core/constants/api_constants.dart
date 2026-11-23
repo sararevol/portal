@@ -39,6 +39,9 @@ class ApiConstants {
   static const String clientPortalDetailsToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJSVkwiLCJpYXQiOjE3ODc3MzczNTEsImF1ZCI6ImFwcF91c2VycyIsImp0aSI6IkRJQUdURVNUIiwic3ViIjoiUE9SVEFMIiwicm9sZXMiOlsiVklFV0VSIl0sInNpdGVJZCI6IkRJQUdURVNUIiwiYmFzZVVybCI6IiJ9.chiKe8KyvBDRieSS-7an__E2vvvNzzWJDNAUOHH7-Mg';
   static const String clientPortalSiteId = 'DIAGTEST';
   static const String clientPortalAppUser = 'PORTAL';
+  static const String publicReportPortalUserId = String.fromEnvironment(
+    'PUBLIC_REPORT_PORTAL_USER_ID',
+  );
 
   // Create Session
   static const String createSessionUrl = String.fromEnvironment(

@@ -220,6 +220,13 @@ class SampleRepository {
   }
 
   Future<List<CoaSampleNodeModel>> fetchPublicCoaReports() async {
+    final portalUserId = ApiConstants.publicReportPortalUserId.trim();
+    if (portalUserId.isEmpty) {
+      throw Exception(
+        'Public report access is not configured. Ask the API owner for a public portal user ID.',
+      );
+    }
+
     try {
       final response = await _publicReportDio.get(
         ApiConstants.getCoaReports,
@@ -228,7 +235,7 @@ class SampleRepository {
             'Authorization': 'Bearer ${ApiConstants.clientPortalDetailsToken}',
             'SITE_ID': ApiConstants.clientPortalSiteId,
             'APP_USER': 'CLIENT',
-            'PORTAL_USER_ID': ApiConstants.defaultPortalUserId,
+            'PORTAL_USER_ID': portalUserId,
           },
         ),
       );
