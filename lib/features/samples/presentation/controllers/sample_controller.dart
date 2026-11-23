@@ -983,12 +983,22 @@ class SampleController extends ChangeNotifier {
   }
 
   Future<void> loadCoaReports() async {
+    await _loadCoaReports(_repository.fetchCoaReports);
+  }
+
+  Future<void> loadPublicCoaReports() async {
+    await _loadCoaReports(_repository.fetchPublicCoaReports);
+  }
+
+  Future<void> _loadCoaReports(
+    Future<List<CoaSampleNodeModel>> Function() fetchReports,
+  ) async {
     _isCoaLoading = true;
     _coaError = null;
     notifyListeners();
 
     try {
-      final list = await _repository.fetchCoaReports();
+      final list = await fetchReports();
       _allCoaNodes = list;
       // By default, expand the first node if available
       if (_allCoaNodes.isNotEmpty && _expandedNodeIds.isEmpty) {

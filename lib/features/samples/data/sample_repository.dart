@@ -10,6 +10,17 @@ import 'models/coa_report_model.dart';
 
 class SampleRepository {
   final ApiClient _apiClient = ApiClient();
+  final Dio _publicReportDio = Dio(
+    BaseOptions(
+      baseUrl: ApiConstants.baseUrl,
+      connectTimeout: const Duration(seconds: 25),
+      receiveTimeout: const Duration(seconds: 25),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    ),
+  );
 
   Future<List<PortalDrillDownItemModel>> fetchDrillDownData({
     required String label,
@@ -205,6 +216,35 @@ class SampleRepository {
       throw Exception(msg ?? 'Failed to fetch COA reports from server');
     } catch (e) {
       throw Exception('Failed to load COA reports: $e');
+    }
+  }
+
+  Future<List<CoaSampleNodeModel>> fetchPublicCoaReports() async {
+    try {
+      final response = await _publicReportDio.get(
+        ApiConstants.getCoaReports,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer ${ApiConstants.clientPortalDetailsToken}',
+            'SITE_ID': ApiConstants.clientPortalSiteId,
+            'APP_USER': 'CLIENT',
+            'PORTAL_USER_ID': ApiConstants.defaultPortalUserId,
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        return CoaSampleNodeModel.parseList(response.data);
+      }
+      return [];
+    } on DioException catch (e) {
+      final responseData = e.response?.data;
+      final message = responseData is Map
+          ? responseData['message']?.toString()
+          : null;
+      throw Exception(message ?? e.message ?? 'Failed to fetch public reports');
+    } catch (e) {
+      throw Exception('Failed to load public reports: $e');
     }
   }
 }

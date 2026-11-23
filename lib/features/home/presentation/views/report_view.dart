@@ -24,7 +24,7 @@ class _ReportViewState extends State<ReportView> {
   void initState() {
     super.initState();
     _controller.addListener(_onStateChanged);
-    _controller.loadCoaReports();
+    _controller.loadPublicCoaReports();
   }
 
   @override
