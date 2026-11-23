@@ -9,6 +9,7 @@ import 'sample_status_badge.dart';
 class CoaTreeViewSection extends StatefulWidget {
   final SampleController controller;
   final bool isMobile;
+  final Future<void> Function()? onRefresh;
   final void Function(CoaSampleNodeModel node, CoaReportItemModel report)? onInspectCoa;
   final void Function(CoaSampleNodeModel node, CoaReportItemModel report)? onViewCoa;
 
@@ -16,6 +17,7 @@ class CoaTreeViewSection extends StatefulWidget {
     super.key,
     required this.controller,
     required this.isMobile,
+    this.onRefresh,
     this.onInspectCoa,
     this.onViewCoa,
   });
@@ -48,7 +50,7 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
       return;
     }
 
-    if (widget.isMobile) {
+    if (widget.isMobile || MediaQuery.of(context).size.width < 900) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -73,6 +75,10 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
       _selectedPreviewReport = report;
       _isFullscreenPreview = false;
     });
+  }
+
+  Future<void> _reloadReports(SampleController controller) {
+    return widget.onRefresh?.call() ?? controller.loadCoaReports();
   }
 
   @override
@@ -117,7 +123,7 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
           // 2. Content / State Handlers
           if (controller.isCoaLoading)
             const SizedBox(
-              height: 320,
+              height: 220,
               child: Center(
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
@@ -136,189 +142,155 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
   Widget _buildMainLayout(SampleController controller) {
     final listWidget = _buildReportsList(controller);
 
-    if (!widget.isMobile && _selectedPreviewReport != null) {
-      final screenHeight = MediaQuery.of(context).size.height;
-      final panelHeight = (screenHeight - 160).clamp(750.0, 1000.0);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final canShowPreview = !widget.isMobile &&
+            constraints.maxWidth >= 900 &&
+            _selectedPreviewReport != null;
+        if (!canShowPreview) return listWidget;
 
-      if (_isFullscreenPreview) {
-        return SizedBox(
-          height: panelHeight,
-          child: CoaPdfPreviewPanel(
-            node: _selectedPreviewNode!,
-            report: _selectedPreviewReport!,
-            isFullscreen: true,
-            onToggleFullscreen: () => setState(() => _isFullscreenPreview = false),
-            onClose: () => setState(() => _isFullscreenPreview = false),
-          ),
-        );
-      }
+        final availableHeight = MediaQuery.of(context).size.height - 300;
+        final panelHeight = availableHeight.clamp(360.0, 720.0);
 
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left: Clean Report Cards List (~35% width)
-          Expanded(
-            flex: 4,
-            child: SizedBox(
-              height: panelHeight,
-              child: Scrollbar(
-                thumbVisibility: true,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: listWidget,
+        if (_isFullscreenPreview) {
+          return SizedBox(
+            height: panelHeight,
+            child: CoaPdfPreviewPanel(
+              node: _selectedPreviewNode!,
+              report: _selectedPreviewReport!,
+              isFullscreen: true,
+              onToggleFullscreen: () =>
+                  setState(() => _isFullscreenPreview = false),
+              onClose: () => setState(() => _isFullscreenPreview = false),
+            ),
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 4,
+              child: SizedBox(
+                height: panelHeight,
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: listWidget,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          // Right: Live Interactive PDF Preview Panel (~65% width)
-          Expanded(
-            flex: 7,
-            child: SizedBox(
-              height: panelHeight,
-              child: CoaPdfPreviewPanel(
-                node: _selectedPreviewNode!,
-                report: _selectedPreviewReport!,
-                isFullscreen: false,
-                onToggleFullscreen: () => setState(() => _isFullscreenPreview = true),
-                onClose: () {},
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 7,
+              child: SizedBox(
+                height: panelHeight,
+                child: CoaPdfPreviewPanel(
+                  node: _selectedPreviewNode!,
+                  report: _selectedPreviewReport!,
+                  isFullscreen: false,
+                  onToggleFullscreen: () =>
+                      setState(() => _isFullscreenPreview = true),
+                  onClose: () {},
+                ),
               ),
             ),
-          ),
-        ],
-      );
-    }
-
-    return listWidget;
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildControlBar(SampleController controller) {
-    if (widget.isMobile) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _searchController,
-            onChanged: (val) => controller.setCoaSearchQuery(val),
-            style: const TextStyle(fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Search by LIMS ID or File Name...',
-              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () {
-                        _searchController.clear();
-                        controller.setCoaSearchQuery('');
-                      },
-                    )
-                  : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = widget.isMobile || constraints.maxWidth < 720;
+        final searchField = TextField(
+          controller: _searchController,
+          onChanged: controller.setCoaSearchQuery,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            hintText: 'Search by LIMS ID, file name, or report number',
+            prefixIcon: const Icon(
+              Icons.search,
+              size: 18,
+              color: AppColors.textSecondary,
             ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, size: 16),
+                    onPressed: () {
+                      _searchController.clear();
+                      controller.setCoaSearchQuery('');
+                    },
+                  )
+                : null,
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: controller.selectedCoaStatusFilter,
-                  isExpanded: true,
-                  items: controller.availableCoaStatusFilters.map((st) {
-                    return DropdownMenuItem(
-                      value: st,
-                      child: Text(
-                        st == 'All' ? 'Status: All' : st,
-                        style: const TextStyle(fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) controller.setCoaStatusFilter(val);
-                  },
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  ),
-                ),
+        );
+
+        final statusFilter = DropdownButtonFormField<String>(
+          initialValue: controller.selectedCoaStatusFilter,
+          isExpanded: true,
+          items: controller.availableCoaStatusFilters.map((status) {
+            return DropdownMenuItem(
+              value: status,
+              child: Text(
+                status == 'All' ? 'All statuses' : status,
+                style: const TextStyle(fontSize: 12),
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 10),
-              IconButton(
-                onPressed: controller.loadCoaReports,
-                icon: const Icon(Icons.refresh, size: 18, color: AppColors.textSecondary),
-                tooltip: 'Refresh Reports',
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) controller.setCoaStatusFilter(value);
+          },
+          decoration: const InputDecoration(
+            labelText: 'Status',
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+        );
+
+        final refreshButton = IconButton(
+          onPressed: () => _reloadReports(controller),
+          icon: const Icon(
+            Icons.refresh,
+            size: 18,
+            color: AppColors.textSecondary,
+          ),
+          tooltip: 'Refresh reports',
+        );
+
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              searchField,
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(child: statusFilter),
+                  const SizedBox(width: 8),
+                  refreshButton,
+                ],
               ),
             ],
-          ),
-        ],
-      );
-    }
+          );
+        }
 
-    return Row(
-      children: [
-        // Live Search Input
-        SizedBox(
-          width: 320,
-          child: TextField(
-            controller: _searchController,
-            onChanged: (val) => controller.setCoaSearchQuery(val),
-            style: const TextStyle(fontSize: 13),
-            decoration: InputDecoration(
-              hintText: 'Search by LIMS ID, File Name, Report...',
-              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.textSecondary),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16),
-                      onPressed: () {
-                        _searchController.clear();
-                        controller.setCoaSearchQuery('');
-                      },
-                    )
-                  : null,
-            ),
-          ),
-        ),
-
-        const SizedBox(width: 14),
-
-        // Status Filter Pill Dropdown
-        Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.formBorder),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: controller.selectedCoaStatusFilter,
-              icon: const Icon(Icons.filter_list, size: 16, color: AppColors.textSecondary),
-              items: controller.availableCoaStatusFilters.map((st) {
-                return DropdownMenuItem(
-                  value: st,
-                  child: Text(
-                    st == 'All' ? 'Status: All' : 'Status: $st',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-                  ),
-                );
-              }).toList(),
-              onChanged: (val) {
-                if (val != null) controller.setCoaStatusFilter(val);
-              },
-            ),
-          ),
-        ),
-
-        const Spacer(),
-
-        // Refresh Button
-        IconButton(
-          onPressed: controller.loadCoaReports,
-          icon: const Icon(Icons.refresh, size: 18, color: AppColors.textSecondary),
-          tooltip: 'Refresh COA Reports',
-        ),
-      ],
+        return Row(
+          children: [
+            Expanded(child: searchField),
+            const SizedBox(width: 14),
+            SizedBox(width: 180, child: statusFilter),
+            const SizedBox(width: 4),
+            refreshButton,
+          ],
+        );
+      },
     );
   }
 
@@ -477,26 +449,31 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
 
   Widget _buildEmptyState(SampleController controller) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 60),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 12),
       alignment: Alignment.center,
       child: Column(
         children: [
-          Icon(Icons.folder_off_outlined, size: 52, color: Colors.grey.shade400),
-          const SizedBox(height: 12),
+          Icon(Icons.folder_off_outlined, size: 44, color: Colors.grey.shade400),
+          const SizedBox(height: 10),
           Text(
-            'No Certificate of Analysis records found',
+            'No reports found',
+            textAlign: TextAlign.center,
             style: GoogleFonts.montserrat(
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Try adjusting your search query or status filter',
-            style: GoogleFonts.montserrat(fontSize: 12, color: AppColors.textMuted),
+            'Try a different search or status filter.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.montserrat(
+              fontSize: 12,
+              color: AppColors.textMuted,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () {
               _searchController.clear();
@@ -517,26 +494,38 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
 
   Widget _buildErrorState(SampleController controller) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 12),
       alignment: Alignment.center,
       child: Column(
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
-          const SizedBox(height: 12),
+          const Icon(Icons.error_outline, size: 42, color: Color(0xFFEF4444)),
+          const SizedBox(height: 10),
           Text(
-            'Failed to load Certificate of Analysis reports',
-            style: GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w600),
+            'Reports could not be loaded',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.montserrat(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            controller.coaError ?? 'An unexpected error occurred.',
-            style: GoogleFonts.montserrat(fontSize: 12, color: AppColors.textMuted),
+          const SizedBox(height: 6),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Text(
+              controller.coaError ?? 'An unexpected error occurred.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.montserrat(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ElevatedButton.icon(
-            onPressed: controller.loadCoaReports,
+            onPressed: () => _reloadReports(controller),
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Retry'),
+            label: const Text('Try again'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
