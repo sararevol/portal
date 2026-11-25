@@ -134,6 +134,7 @@ class _ReportViewState extends State<ReportView> {
                     controller: _controller,
                     isMobile: isCompact,
                     onRefresh: _controller.loadPublicCoaReports,
+                    showOpenExternalAction: false,
                   ),
                 ],
               ),

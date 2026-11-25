@@ -13,6 +13,7 @@ class CoaPdfPreviewPanel extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onToggleFullscreen;
   final bool isFullscreen;
+  final bool showOpenExternalAction;
 
   const CoaPdfPreviewPanel({
     super.key,
@@ -21,6 +22,7 @@ class CoaPdfPreviewPanel extends StatelessWidget {
     required this.onClose,
     this.onToggleFullscreen,
     this.isFullscreen = false,
+    this.showOpenExternalAction = true,
   });
 
   Future<void> _openExternal(BuildContext context) async {
@@ -148,14 +150,14 @@ class CoaPdfPreviewPanel extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                 ),
 
-                // Open in External Tab
-                IconButton(
-                  tooltip: 'Open in new tab',
-                  icon: const Icon(Icons.open_in_new, size: 18),
-                  color: AppColors.textSecondary,
-                  onPressed: () => _openExternal(context),
-                  visualDensity: VisualDensity.compact,
-                ),
+                if (showOpenExternalAction)
+                  IconButton(
+                    tooltip: 'Open in new tab',
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    color: AppColors.textSecondary,
+                    onPressed: () => _openExternal(context),
+                    visualDensity: VisualDensity.compact,
+                  ),
 
                 // Fullscreen Toggle
                 if (onToggleFullscreen != null)

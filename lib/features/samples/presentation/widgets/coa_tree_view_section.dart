@@ -10,6 +10,7 @@ class CoaTreeViewSection extends StatefulWidget {
   final SampleController controller;
   final bool isMobile;
   final Future<void> Function()? onRefresh;
+  final bool showOpenExternalAction;
   final void Function(CoaSampleNodeModel node, CoaReportItemModel report)? onInspectCoa;
   final void Function(CoaSampleNodeModel node, CoaReportItemModel report)? onViewCoa;
 
@@ -18,6 +19,7 @@ class CoaTreeViewSection extends StatefulWidget {
     required this.controller,
     required this.isMobile,
     this.onRefresh,
+    this.showOpenExternalAction = true,
     this.onInspectCoa,
     this.onViewCoa,
   });
@@ -63,6 +65,7 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
               node: node,
               report: report,
               onClose: () => Navigator.of(ctx).pop(),
+              showOpenExternalAction: widget.showOpenExternalAction,
             ),
           ),
         ),
@@ -158,6 +161,7 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
             child: CoaPdfPreviewPanel(
               node: _selectedPreviewNode!,
               report: _selectedPreviewReport!,
+              showOpenExternalAction: widget.showOpenExternalAction,
               isFullscreen: true,
               onToggleFullscreen: () =>
                   setState(() => _isFullscreenPreview = false),
@@ -190,6 +194,7 @@ class _CoaTreeViewSectionState extends State<CoaTreeViewSection> {
                 child: CoaPdfPreviewPanel(
                   node: _selectedPreviewNode!,
                   report: _selectedPreviewReport!,
+                  showOpenExternalAction: widget.showOpenExternalAction,
                   isFullscreen: false,
                   onToggleFullscreen: () =>
                       setState(() => _isFullscreenPreview = true),
